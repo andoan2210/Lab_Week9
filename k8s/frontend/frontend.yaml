@@ -1,0 +1,122 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: demo
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: frontend-config
+  namespace: demo
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+data:
+  index.html: |
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <title>GitOps Demo</title>
+      <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 60px auto; padding: 0 20px; }
+        h1 { color: #333; }
+        button {
+          background: #0066cc; color: white; border: none;
+          padding: 10px 20px; font-size: 16px; border-radius: 4px; cursor: pointer;
+        }
+        button:hover { background: #0052a3; }
+        #result {
+          margin-top: 20px; padding: 16px; background: #f4f4f4;
+          border-radius: 4px; font-family: monospace; white-space: pre-wrap;
+          min-height: 60px;
+        }
+        .error { color: red; }
+        .success { color: green; }
+      </style>
+    </head>
+    <body>
+      <h1>GitOps FE + BE Demo</h1>
+      <p>Frontend (nginx) → Backend (http-echo)</p>
+      <button onclick="callBackend()">Call Backend</button>
+      <div id="result">Click the button to call backend...</div>
+      <script>
+        async function callBackend() {
+          const el = document.getElementById('result');
+          el.textContent = 'Loading...';
+          el.className = '';
+          try {
+            const res = await fetch('/api/');
+            const text = await res.text();
+            el.textContent = 'Status: ' + res.status + '\n\n' + text;
+            el.className = 'success';
+          } catch (err) {
+            el.textContent = 'Error: ' + err.message;
+            el.className = 'error';
+          }
+        }
+      </script>
+    </body>
+    </html>
+  nginx.conf: |
+    server {
+      listen 80;
+      location / {
+        root /usr/share/nginx/html;
+        index index.html;
+      }
+      location /api/ {
+        proxy_pass http://backend.demo.svc.cluster.local/;
+        proxy_set_header Host $host;
+      }
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: demo
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      containers:
+        - name: frontend
+          image: nginx:1.27
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: html
+              mountPath: /usr/share/nginx/html/index.html
+              subPath: index.html
+            - name: html
+              mountPath: /etc/nginx/conf.d/default.conf
+              subPath: nginx.conf
+      volumes:
+        - name: html
+          configMap:
+            name: frontend-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  namespace: demo
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  selector:
+    app: frontend
+  ports:
+    - port: 80
+      targetPort: 80
