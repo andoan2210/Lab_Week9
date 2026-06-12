@@ -1,9 +1,23 @@
 apiVersion: v1
-kind: Namespace
+kind: ConfigMap
 metadata:
-  name: demo
+  name: backend-config
+  namespace: demo
   annotations:
-    argocd.argoproj.io/sync-wave: "-1"
+    argocd.argoproj.io/sync-wave: "0"
+data:
+  default.conf: |
+    server {
+      listen 80;
+      location / {
+        add_header Content-Type application/json;
+        return 200 '{"status":"ok","message":"Hello from Backend","version":"v1"}';
+      }
+      location /healthz {
+        add_header Content-Type application/json;
+        return 200 '{"status":"ok"}';
+      }
+    }
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -24,12 +38,17 @@ spec:
     spec:
       containers:
         - name: backend
-          image: hashicorp/http-echo:latest
-          args:
-            - "-text={\"status\":\"ok\",\"message\":\"Hello from Backend\",\"version\":\"v1\"}"
-            - "-listen=:5678"
+          image: nginx:1.27
           ports:
-            - containerPort: 5678
+            - containerPort: 80
+          volumeMounts:
+            - name: config
+              mountPath: /etc/nginx/conf.d/default.conf
+              subPath: default.conf
+      volumes:
+        - name: config
+          configMap:
+            name: backend-config
 ---
 apiVersion: v1
 kind: Service
@@ -43,4 +62,4 @@ spec:
     app: backend
   ports:
     - port: 80
-      targetPort: 5678
+      targetPort: 80
