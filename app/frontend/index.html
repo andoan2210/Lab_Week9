@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GitOps Demo</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: Arial, sans-serif;
+      background: #f0f2f5;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .card {
+      background: white;
+      border-radius: 8px;
+      padding: 40px;
+      max-width: 500px;
+      width: 100%;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+    }
+    h1 { color: #333; margin-bottom: 8px; font-size: 24px; }
+    p { color: #666; margin-bottom: 24px; font-size: 14px; }
+    button {
+      background: #0066cc;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      font-size: 15px;
+      border-radius: 6px;
+      cursor: pointer;
+      width: 100%;
+      transition: background 0.2s;
+    }
+    button:hover { background: #0052a3; }
+    button:disabled { background: #999; cursor: not-allowed; }
+    #result {
+      margin-top: 20px;
+      padding: 16px;
+      background: #f8f9fa;
+      border-radius: 6px;
+      font-family: monospace;
+      font-size: 13px;
+      white-space: pre-wrap;
+      min-height: 80px;
+      border: 1px solid #e0e0e0;
+    }
+    .success { color: #1a7f37; }
+    .error { color: #cf222e; }
+    .loading { color: #666; font-style: italic; }
+    .badge {
+      display: inline-block;
+      background: #0066cc;
+      color: white;
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 12px;
+      margin-bottom: 16px;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <span class="badge">GitOps · ArgoCD</span>
+    <h1>FE + BE Demo</h1>
+    <p>Frontend (nginx) → Backend (Flask API)</p>
+    <button id="btn" onclick="callBackend()">Call Backend</button>
+    <div id="result" class="loading">Click the button to call backend...</div>
+  </div>
+
+  <script>
+    async function callBackend() {
+      const el = document.getElementById('result');
+      const btn = document.getElementById('btn');
+      el.textContent = 'Loading...';
+      el.className = 'loading';
+      btn.disabled = true;
+
+      try {
+        const res = await fetch('/api/');
+        const data = await res.json();
+        el.textContent = JSON.stringify(data, null, 2);
+        el.className = 'success';
+      } catch (err) {
+        el.textContent = 'Error: ' + err.message;
+        el.className = 'error';
+      } finally {
+        btn.disabled = false;
+      }
+    }
+  </script>
+</body>
+</html>
